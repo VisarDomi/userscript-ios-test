@@ -107,8 +107,8 @@
             const response = await request('GET', `/__debug_poll?${query}`);
             if (response.status >= 200 && response.status < 300) {
                 const payload = JSON.parse(response.responseText);
-                for (const command of payload.commands || []) await execute(command);
                 lastCommandId = Math.max(lastCommandId, payload.cursor || 0);
+                for (const command of payload.commands || []) void execute(command);
             }
         } catch {
             // Keep reconnecting while the page remains alive.

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
     createController,
@@ -103,4 +104,19 @@ test("case matrix continues after a failure", async () => {
         process.stdout.write = originalWrite;
         console.log = originalLog;
     }
+});
+
+test("debugger polling does not await long-running remote commands", async () => {
+    const source = await readFile(
+        new URL("../src/debug-template.user.js", import.meta.url),
+        "utf8",
+    );
+    assert.match(
+        source,
+        /lastCommandId = Math\.max[\s\S]+for \(const command of payload\.commands \|\| \[\]\) void execute\(command\)/,
+    );
+    assert.doesNotMatch(
+        source,
+        /for \(const command of payload\.commands \|\| \[\]\) await execute\(command\)/,
+    );
 });

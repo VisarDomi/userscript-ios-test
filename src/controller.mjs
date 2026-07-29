@@ -111,7 +111,6 @@ export function createController({
                     stdio: ["ignore", "ignore", "inherit"],
                     env: {
                         ...process.env,
-                        IOS_TEST_PROJECT_ROOT: root,
                         IOS_TEST_PROJECT_NAME: name,
                         IOS_TEST_DEBUGGER_NAME: debuggerName,
                         IOS_TEST_DEBUGGER_SLUG: debuggerSlug,
@@ -124,7 +123,7 @@ export function createController({
         for (let attempt = 0; attempt < 40; attempt++) {
             if (ownedServer.exitCode !== null) {
                 throw new Error(
-                    "The repository-local iOS bridge failed to start. Run `npm run tests:setup`.",
+                    "The shared iOS test bridge failed to start.",
                 );
             }
             try {
@@ -134,7 +133,7 @@ export function createController({
                 await sleep(250);
             }
         }
-        throw new Error("Timed out starting the repository-local iOS bridge.");
+        throw new Error("Timed out starting the shared iOS test bridge.");
     }
 
     async function waitForDebugger() {

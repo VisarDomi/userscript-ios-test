@@ -15,11 +15,10 @@ import urllib.parse
 from pathlib import Path
 
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent
-PROJECT_ROOT = Path(os.environ.get("IOS_TEST_PROJECT_ROOT", os.getcwd())).resolve()
 PROJECT_NAME = os.environ.get("IOS_TEST_PROJECT_NAME", "userscript")
 DEBUGGER_NAME = os.environ.get("IOS_TEST_DEBUGGER_NAME", f"{PROJECT_NAME}-debug 1")
 DEBUGGER_SLUG = os.environ.get("IOS_TEST_DEBUGGER_SLUG", "userscript-ios-test-debug")
-STATE_DIR = PROJECT_ROOT / ".ios-debug"
+STATE_DIR = PACKAGE_ROOT / ".ios-debug"
 DEBUG_TEMPLATE = PACKAGE_ROOT / "src" / "debug-template.user.js"
 DEBUG_PATH = f"/{DEBUGGER_SLUG}.user.js"
 MAX_BODY = 128 * 1024
@@ -87,7 +86,7 @@ def setup(port: int) -> None:
     print(f"Certificate: {cert}")
     print(f"iPhone CA profile: https://{host}:{port}/api/cert")
     print(f"iPhone debugger:   https://{host}:{port}{DEBUG_PATH}")
-    print("Start the bridge with `npm run tests:server`, then open those URLs on the iPhone.")
+    print("The shared bridge will start automatically when a phone suite connects.")
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -149,7 +148,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if parsed.path == "/api/cert":
             ca = root_ca_path()
             if not ca.exists():
-                self.send_error(404, "Root CA unavailable; run npm run tests:setup")
+                self.send_error(404, "Shared root CA unavailable")
                 return
             encoded = ca.read_bytes()
             self.send_response(200)
@@ -275,7 +274,7 @@ def main() -> None:
 
     cert, key = certificate_paths()
     if not cert.exists() or not key.exists():
-        raise SystemExit("Missing HTTPS certificate. Run: npm run tests:setup")
+        setup(args.port)
     server = http.server.ThreadingHTTPServer(("0.0.0.0", args.port), Handler)
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain(cert, key)

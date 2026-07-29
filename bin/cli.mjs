@@ -41,7 +41,6 @@ const completed = spawnSync(
         stdio: "inherit",
         env: {
             ...process.env,
-            IOS_TEST_PROJECT_ROOT: projectRoot,
             IOS_TEST_PROJECT_NAME: config.name,
             IOS_TEST_DEBUGGER_NAME: debuggerConfig.name,
             IOS_TEST_DEBUGGER_SLUG: debuggerConfig.slug,

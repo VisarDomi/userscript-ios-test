@@ -62,9 +62,7 @@ Add scripts:
 ```json
 {
   "scripts": {
-    "tests": "node tests/ios/run.mjs",
-    "tests:server": "userscript-ios-test server --config tests/ios/config.json",
-    "tests:setup": "userscript-ios-test setup --config tests/ios/config.json"
+    "tests": "node tests/ios/run.mjs"
   }
 }
 ```
@@ -91,17 +89,12 @@ Install
 [`../dist/userscript-ios-test-debug.user.js`](../dist/userscript-ios-test-debug.user.js)
 on the iPhone and grant it access to all sites used by tests.
 
-On a new machine or after a LAN address change:
-
-```bash
-cd /path/to/consumer-repository
-npm run tests:setup
-npm run tests:server
-```
-
-Install/trust the printed mkcert CA profile, and reinstall the rebuilt universal
-debugger if its address changed. All repositories share port 37777, so run only
-one suite at a time.
+The shared harness starts its bridge and creates shared certificate material
+automatically on the first connection. If the LAN address changes, rebuild and
+reinstall the universal debugger from this shared repository. Install/trust the
+shared mkcert CA profile if the phone has not trusted it yet. No certificate,
+bridge, or setup state belongs in a consumer repository. All repositories share
+port 37777, so run only one suite at a time.
 
 ## 5. Create the first runner
 

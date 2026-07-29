@@ -79,14 +79,15 @@ Example configuration:
 }
 ```
 
-Consumer scripts:
+Consumer script:
 
 ```json
 {
-  "tests:server": "userscript-ios-test server --config tests/ios/config.json",
-  "tests:setup": "userscript-ios-test setup --config tests/ios/config.json"
+  "tests": "node tests/ios/run.mjs"
 }
 ```
 
 The repository-specific runner imports `createController` from
-`userscript-ios-test/controller`.
+`userscript-ios-test/controller`. Connecting a session starts the shared bridge
+and creates its shared HTTPS certificate when needed; certificate and bridge
+state never live in the consumer repository.
