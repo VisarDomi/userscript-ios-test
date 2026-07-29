@@ -9,6 +9,9 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const config = JSON.parse(
     await readFile(resolve(root, "debugger.config.json"), "utf8"),
 );
+const pkg = JSON.parse(
+    await readFile(resolve(root, "package.json"), "utf8"),
+);
 
 function lanAddress() {
     if (process.env.IOS_DEBUG_HOST) return process.env.IOS_DEBUG_HOST;
@@ -29,7 +32,8 @@ function lanAddress() {
 const host = await lanAddress();
 const port = Number(process.env.IOS_DEBUG_PORT ?? config.port);
 const source = (await readFile(resolve(root, "src/debug-template.user.js"), "utf8"))
-    .replaceAll("{{DEBUGGER_NAME}}", config.name)
+    .replaceAll("{{DEBUGGER_NAME}}", `${config.name} v${pkg.version}`)
+    .replaceAll("{{VERSION}}", pkg.version)
     .replaceAll("{{HOST}}", host)
     .replaceAll("{{ORIGIN}}", `https://${host}:${port}`);
 const output = resolve(root, "dist", `${config.slug}.user.js`);

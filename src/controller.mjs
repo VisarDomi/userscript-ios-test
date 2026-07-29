@@ -1,9 +1,13 @@
 import { spawn, spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import https from "node:https";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const packageVersion = JSON.parse(
+    readFileSync(resolve(packageRoot, "package.json"), "utf8"),
+).version;
 
 export const sleep = milliseconds =>
     new Promise(resolveSleep => setTimeout(resolveSleep, milliseconds));
@@ -36,7 +40,7 @@ export function parseSelection(argv, { defaultTest = "full" } = {}) {
 export function createController({
     root,
     name,
-    debuggerName = "userscript-ios-test-debug 1",
+    debuggerName = `userscript-ios-test-debug v${packageVersion}`,
     debuggerSlug = "userscript-ios-test-debug",
     port = 37777,
     settleMs = 500,

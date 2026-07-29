@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         {{DEBUGGER_NAME}}
 // @namespace    https://github.com/VisarDomi/debug
-// @version      1
+// @version      {{VERSION}}
 // @description  Remote Safari debugger controlled by this PC.
 // @match        http://*/*
 // @match        https://*/*

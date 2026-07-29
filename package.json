@@ -1,10 +1,10 @@
 {
   "name": "userscript-ios-test",
-  "version": "0.1.0",
+  "version": "3",
   "description": "Shared iOS Safari test transport and controller for userscripts",
   "type": "module",
   "scripts": {
-    "build": "node scripts/build-debugger.mjs",
+    "build": "node increase.js && node scripts/build-debugger.mjs",
     "test": "node --test"
   },
   "exports": {

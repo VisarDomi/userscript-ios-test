@@ -20,6 +20,7 @@ DEBUGGER_NAME = os.environ.get("IOS_TEST_DEBUGGER_NAME", f"{PROJECT_NAME}-debug 
 DEBUGGER_SLUG = os.environ.get("IOS_TEST_DEBUGGER_SLUG", "userscript-ios-test-debug")
 STATE_DIR = PACKAGE_ROOT / ".ios-debug"
 DEBUG_TEMPLATE = PACKAGE_ROOT / "src" / "debug-template.user.js"
+PACKAGE_VERSION = json.loads((PACKAGE_ROOT / "package.json").read_text())["version"]
 DEBUG_PATH = f"/{DEBUGGER_SLUG}.user.js"
 MAX_BODY = 128 * 1024
 MAX_ITEMS = 500
@@ -60,6 +61,7 @@ def debugger_source(port: int) -> bytes:
     host = lan_ip()
     source = DEBUG_TEMPLATE.read_text()
     source = source.replace("{{DEBUGGER_NAME}}", DEBUGGER_NAME)
+    source = source.replace("{{VERSION}}", PACKAGE_VERSION)
     source = source.replace("{{HOST}}", host)
     source = source.replace("{{ORIGIN}}", f"https://{host}:{port}")
     return source.encode()

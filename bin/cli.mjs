@@ -9,6 +9,9 @@ const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const debuggerConfig = JSON.parse(
     readFileSync(resolve(packageRoot, "debugger.config.json"), "utf8"),
 );
+const pkg = JSON.parse(
+    readFileSync(resolve(packageRoot, "package.json"), "utf8"),
+);
 const args = process.argv.slice(2);
 const action = args.shift();
 const configIndex = args.indexOf("--config");
@@ -42,7 +45,7 @@ const completed = spawnSync(
         env: {
             ...process.env,
             IOS_TEST_PROJECT_NAME: config.name,
-            IOS_TEST_DEBUGGER_NAME: debuggerConfig.name,
+            IOS_TEST_DEBUGGER_NAME: `${debuggerConfig.name} v${pkg.version}`,
             IOS_TEST_DEBUGGER_SLUG: debuggerConfig.slug,
             IOS_DEBUG_PORT: String(debuggerConfig.port),
         },
