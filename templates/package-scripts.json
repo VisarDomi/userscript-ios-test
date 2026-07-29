@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "tests": "node tests/ios/run.mjs",
+    "tests:server": "userscript-ios-test server --config tests/ios/config.json",
+    "tests:setup": "userscript-ios-test setup --config tests/ios/config.json"
+  },
+  "devDependencies": {
+    "userscript-ios-test": "file:../../userscript-ios-test"
+  }
+}
