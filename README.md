@@ -42,6 +42,11 @@ phone unlocked on `https://example.com/` and run:
 npm run manual:probe
 ```
 
+This is a one-shot probe: it closes its bridge after reporting success. Its
+green page banner can remain visible, but a later investigation must create
+and verify its own connection. For one-chance navigation, keep preflight,
+navigation, inspection, and cleanup in one controller process.
+
 See the [manual-control guide](docs/manual-control.md) for certificate trust,
 connection diagnosis, direct commands, navigation, injection, and bfcache
 verification.

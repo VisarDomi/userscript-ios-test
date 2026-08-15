@@ -44,6 +44,10 @@ Prefer `createSession()` for phone operations.
 ## `createSession({ controller, startUrl, sourceLabel })`
 
 Owns the foreground Safari tab and its changing debugger client identity.
+Session ownership is scoped to the running controller process. Calling
+`session.close()` stops a bridge started by that process; a later script must
+connect again even if a banner injected by the earlier script remains visible
+in Safari.
 
 ### `session.connect(options)`
 
@@ -65,6 +69,11 @@ Set `{ expectResult: false }` when the code navigates away.
 ### `session.navigate(url, options?)`
 
 Performs real navigation and adopts the replacement debugger client.
+
+Remote commands cannot be pre-queued for that future client. The replacement
+client first registers itself, then subsequent `session.command()` calls can
+run in it. Instrumentation required before the target page's first debugger
+poll must already be installed as document-start code.
 
 Options:
 

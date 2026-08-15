@@ -229,7 +229,10 @@ Run:
    npm run manual:probe
    ```
 
-   Follow [manual-control.md](manual-control.md) for setup and diagnosis;
+   This probe exits and closes its bridge after success; it does not provide a
+   persistent connection for the suite. Follow
+   [manual-control.md](manual-control.md) for the required same-process
+   preflight, setup, and diagnosis;
 5. one smoke case;
 6. one case per route/site type;
 7. the complete safe suite.

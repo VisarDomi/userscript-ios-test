@@ -1,6 +1,6 @@
 {
   "name": "userscript-ios-test",
-  "version": "5",
+  "version": "6",
   "description": "Shared iOS Safari test transport and controller for userscripts",
   "type": "module",
   "scripts": {

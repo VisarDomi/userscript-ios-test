@@ -48,6 +48,8 @@ try {
 
     console.log("Foreground Safari control confirmed:");
     console.log(JSON.stringify(result, null, 2));
+    console.log("Probe complete; this process is closing its bridge.");
+    console.log("A later investigation must establish its own connection.");
 } finally {
     controller.close();
 }

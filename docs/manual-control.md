@@ -88,9 +88,104 @@ The probe starts the bridge, waits up to two minutes for the phone, identifies
 the foreground Safari tab, and injects a green `CONNECTION SUCCESSFUL` banner.
 It also prints the controlled URL and page title on the computer.
 
+The probe is deliberately one-shot. After printing success it closes the
+bridge and exits. The green banner remains in the page, but it does **not** mean
+that a later Node process is already connected. Every controller process owns
+its own live bridge/session and must establish its own debugger round trip.
+Never treat an earlier probe as the connection for a later investigation.
+
 If it prints `Waiting for iPhone debugger`, leave it running while checking the
 phone. The printed debugger URL is the exact script served for the current
 host and port.
+
+No page command or navigation has happened while the process only says
+`Waiting for iPhone debugger`. A session has actually claimed the tab only
+after it prints `Claimed foreground Safari tab at ...` or the manual probe
+prints `Foreground Safari control confirmed`.
+
+## Own one complete command session
+
+For a real investigation, connection, readiness proof, navigation, commands,
+and cleanup must happen in the same Node process. Do not run `manual:probe`,
+let it exit, and then assume a separate investigation script inherits that
+connection.
+
+Use this lifecycle:
+
+```js
+const controller = createController({
+    root,
+    name: "manual-investigation",
+    connectionTimeoutMs: 120_000,
+});
+const session = createSession({ controller });
+
+try {
+    await session.connect({
+        allowedHosts: ["provider.example"],
+        controlledCode: `return Boolean(globalThis.__myInvestigation);`,
+    });
+
+    // This proves command execution in the same session that will navigate.
+    const ready = await session.command(`
+        return {
+            href: location.href,
+            visibilityState: document.visibilityState,
+            hasFocus: document.hasFocus(),
+        };
+    `);
+    if (
+        ready.href !== "https://example.com/" ||
+        ready.visibilityState !== "visible" ||
+        !ready.hasFocus
+    ) {
+        throw new Error(`Safari preflight failed: ${JSON.stringify(ready)}`);
+    }
+    console.log("SAME-SESSION PREFLIGHT CONFIRMED");
+
+    await session.navigate("https://provider.example/supported-route");
+    const result = await session.command(`return document.title;`);
+    console.log(result);
+} finally {
+    await session.cleanup();
+    session.close();
+}
+```
+
+Keep Safari unlocked and foregrounded from before `session.connect()` until
+cleanup finishes. Run only this controller on port `37777`. If the script is
+still at `Waiting for iPhone debugger`, stop there and repair connectivity;
+do not continue toward a one-chance target.
+
+## Prepare a one-chance navigation
+
+When a target can be visited only once, rehearse the exact same script against
+a disposable site first. The production run must keep one controller alive
+for all of these stages:
+
+1. claim foreground `https://example.com/` with `session.connect()`;
+2. complete a same-session command round trip and verify focus/visibility;
+3. install or otherwise prepare every recorder that must exist before the
+   target navigation;
+4. navigate exactly once with `session.navigate()`;
+5. adopt the replacement page client and collect bounded snapshots;
+6. return to `https://example.com/` in `finally` and close the bridge.
+
+There is an important document-start boundary. The universal debugger reports
+its own `connected` event at document start, but ordinary remote commands are
+available only after the replacement page client begins polling the bridge.
+The bridge intentionally does not deliver old broadcast commands to a newly
+seen client. Therefore a command sent before navigation cannot install a DOM,
+`fetch`, or XHR observer in the future page.
+
+If the investigation must capture work that can occur before the first poll
+(for example, a short-lived anti-bot challenge or the earliest provider
+requests), put a passive recorder in an installed `document-start` userscript
+before the one-chance visit, or extend and verify the debugger's startup
+instrumentation first. Rehearse that exact recorder on the disposable site.
+Post-navigation commands can still inspect buffered Performance entries,
+current DOM/state, and subsequent activity, but they cannot prove that they
+saw every earlier event.
 
 ## Run one-off commands safely
 
