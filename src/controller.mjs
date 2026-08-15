@@ -476,6 +476,8 @@ export function createSession({
         reloadIfSame = true,
     } = {}) {
         const previous = currentClient();
+        const before = await controller.state();
+        const known = new Set(before.clients.map(item => item.client));
         await controller.navigationCommand(
             previous.client,
             `
@@ -488,7 +490,7 @@ export function createSession({
         );
         client = await controller.waitForClient(
             candidate =>
-                candidate.client !== previous.client &&
+                !known.has(candidate.client) &&
                 matches(candidate, url),
             url,
         );
@@ -501,6 +503,8 @@ export function createSession({
             controller.navigationMatches(candidate.href, expected),
     } = {}) {
         const previous = currentClient();
+        const beforeState = await controller.state();
+        const known = new Set(beforeState.clients.map(item => item.client));
         await controller.navigationCommand(
             previous.client,
             `
@@ -513,7 +517,7 @@ export function createSession({
         );
         client = await controller.waitForClient(
             candidate =>
-                candidate.client !== previous.client &&
+                !known.has(candidate.client) &&
                 matches(candidate, url),
             url,
         );

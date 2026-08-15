@@ -3,6 +3,17 @@
 Shared iOS Safari transport and test-controller infrastructure for local
 userscript repositories.
 
+## Documentation
+
+- [Manual iPhone Safari control](docs/manual-control.md): install and trust the
+  universal debugger, verify foreground control, run one-off commands, follow
+  navigation clients, prove bfcache, diagnose connections, and clean up.
+- [Greenfield integration guide](docs/greenfield-guide.md): add a safe phone
+  suite to a userscript repository.
+- [Controller API](docs/api.md): session and low-level controller reference.
+- [Successful suite patterns](docs/successful-implementations.md): proven
+  consumer designs.
+
 Adding tests to a repository that currently has none:
 
 1. Read [`docs/greenfield-guide.md`](docs/greenfield-guide.md).
@@ -23,6 +34,17 @@ npm run build
 Install [`dist/userscript-ios-test-debug.user.js`](dist/userscript-ios-test-debug.user.js)
 on the phone once. Every consuming repository uses the same debugger identity
 and port, so only one suite should run at a time.
+
+To verify that this computer can control the foreground Safari tab, keep the
+phone unlocked on `https://example.com/` and run:
+
+```bash
+npm run manual:probe
+```
+
+See the [manual-control guide](docs/manual-control.md) for certificate trust,
+connection diagnosis, direct commands, navigation, injection, and bfcache
+verification.
 
 Each consuming repository owns its application assertions and a small
 `tests/ios/config.json`. This package owns:

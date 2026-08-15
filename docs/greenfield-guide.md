@@ -222,7 +222,14 @@ Run:
 1. runner syntax check;
 2. repository type-check;
 3. repository production build;
-4. manual universal-debugger round trip on foreground `example.com`;
+4. manual universal-debugger round trip on foreground `example.com`:
+
+   ```bash
+   cd /home/visar/Documents/work/userscript-ios-test
+   npm run manual:probe
+   ```
+
+   Follow [manual-control.md](manual-control.md) for setup and diagnosis;
 5. one smoke case;
 6. one case per route/site type;
 7. the complete safe suite.

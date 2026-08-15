@@ -52,9 +52,19 @@ test("session normalizes a controlled example.com fixture URL to the exact start
     const navigations = [];
     const controller = {
         settleMs: 0,
+        state: async () => ({
+            clients: [
+                { client: "fixture", href: "https://example.com/fixture/home" },
+                { client: "background", href: "https://example.com/" },
+            ],
+        }),
         navigationMatches: (actual, expected) => actual === expected,
         navigationCommand: async () => {},
         waitForClient: async predicate => {
+            assert.equal(
+                predicate({ client: "background", href: "https://example.com/" }),
+                false,
+            );
             const candidate = { client: "next", href: "https://example.com/" };
             assert.equal(predicate(candidate), true);
             navigations.push(candidate.href);

@@ -63,4 +63,6 @@ npm run build
 
 For a newly integrated repository, run its required type-check/build commands,
 then manually verify the universal debugger connection before running its
-smallest smoke test.
+smallest smoke test. The canonical operator workflow is documented in
+[`docs/manual-control.md`](docs/manual-control.md); keep manual-control
+instructions in this shared repository rather than consumer repositories.
