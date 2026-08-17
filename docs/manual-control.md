@@ -174,9 +174,11 @@ for all of these stages:
 There is an important document-start boundary. The universal debugger reports
 its own `connected` event at document start, but ordinary remote commands are
 available only after the replacement page client begins polling the bridge.
-The bridge intentionally does not deliver old broadcast commands to a newly
-seen client. Therefore a command sent before navigation cannot install a DOM,
-`fetch`, or XHR observer in the future page.
+The bridge delivers pending commands to a newly seen client on its first poll,
+so a command posted right before navigation reaches the future page; commands
+posted long before may already have been evicted from the bridge's bounded
+command list. Therefore a command sent before navigation cannot reliably
+install a DOM, `fetch`, or XHR observer in the future page.
 
 If the investigation must capture work that can occur before the first poll
 (for example, a short-lived anti-bot challenge or the earliest provider
@@ -352,6 +354,40 @@ Do not send commands to the pre-navigation client. Use `session.navigate()`,
 appropriate client. When writing lower-level tooling, snapshot all known client
 IDs before navigating and require the replacement page to have a previously
 unknown ID. For Back/bfcache, wait for the matching revived client instead.
+
+### Commands time out right after navigation
+
+The navigation itself worked and the phone shows the target page, but the
+first post-navigation command times out. Cause: several Safari tabs share the
+same URL (Safari restores tabs after a restart, repeated visits, or bfcache
+revivals). `session.navigate()`/`reload()` adopt the first href-matching
+active client, which may belong to a background tab; commands then run
+against the wrong page and never return.
+
+Remedies:
+
+- Keep Safari to a single tab while a controller owns it (simplest).
+- After navigating, re-claim the focused tab before commanding:
+
+```js
+await session.navigate(target);
+const foreground = await controller.foregroundClient();
+const ready = await controller.command(foreground.client, `return location.href;`);
+```
+
+`foregroundClient()` is the authoritative selector (it broadcasts a
+visibility/focus probe); the href-based adoption inside `navigate()` is only
+a convenience and can pick the wrong tab. On iOS, `document.hasFocus()` is
+`false` even for the foreground tab, so `visibilityState === "visible"`
+is the real discriminator; `hasFocus` is advisory only. The selector matches
+probe replies against the live client list at each poll — a just-navigated
+foreground page registers its client between the pre-probe snapshot and its
+reply, and must still be selectable.
+
+Diagnosis shortcut: while a run is stuck, curl the bridge state —
+`curl -sk https://127.0.0.1:37777/__debug_state` — and compare the
+clients' `href` and `lastSeen` fields against the tab you are watching.
+
 
 ### Injection appears to succeed on the wrong page
 

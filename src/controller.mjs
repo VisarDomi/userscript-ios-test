@@ -214,8 +214,8 @@ export function createController({
     }
 
     async function foregroundClient() {
-        const active = await activeClients();
-        if (!active.length) throw new Error("No active iPhone debugger client");
+        const initial = await activeClients();
+        if (!initial.length) throw new Error("No active iPhone debugger client");
         const commandId = await postCommand("*", `
             return {
                 visibilityState: document.visibilityState,
@@ -226,6 +226,18 @@ export function createController({
         const deadline = Date.now() + 5000;
         while (Date.now() < deadline) {
             const current = await state();
+            const now = Date.now() / 1000;
+            // Match replies against the LIVE client list, not a snapshot taken
+            // before the probe: a just-navigated foreground page registers its
+            // client between snapshot and reply and would otherwise never
+            // match. visibilityState is the authoritative discriminator on
+            // iOS (document.hasFocus() is false even for the foreground tab);
+            // hasFocus is only used to prefer a candidate, never to require.
+            const live = new Map(
+                current.clients
+                    .filter(client => now - client.lastSeen < 3)
+                    .map(client => [client.client, client]),
+            );
             const replies = current.results.filter(result =>
                 result.commandId === commandId && result.ok
             );
@@ -236,13 +248,14 @@ export function createController({
             const visible = focused ?? replies.find(result =>
                 result.result?.visibilityState === "visible"
             );
-            const match = active.find(client => client.client === visible?.client);
+            const match = visible ? live.get(visible.client) : undefined;
             if (match) return match;
             await sleep(100);
         }
-        if (active.length === 1) return active[0];
+        const remaining = await activeClients();
+        if (remaining.length === 1) return remaining[0];
         throw new Error(
-            `Could not identify the foreground Safari tab among ${active.length} active clients`,
+            `Could not identify the foreground Safari tab among ${remaining.length} active clients`,
         );
     }
 
@@ -475,7 +488,16 @@ export function createSession({
             controller.navigationMatches(candidate.href, expected),
         reloadIfSame = true,
     } = {}) {
-        const previous = currentClient();
+        // Re-claim the foreground client: the session client can be stale
+        // (pages that reload themselves, background-tab adoption). Posting
+        // the navigation to a dead client navigates nothing.
+        let previous = currentClient();
+        try {
+            const foreground = await controller.foregroundClient();
+            if (foreground) previous = foreground;
+        } catch {
+            // Keep the session client; navigation may still succeed.
+        }
         const before = await controller.state();
         const known = new Set(before.clients.map(item => item.client));
         await controller.navigationCommand(
@@ -502,7 +524,15 @@ export function createSession({
         matches = (candidate, expected) =>
             controller.navigationMatches(candidate.href, expected),
     } = {}) {
-        const previous = currentClient();
+        // Same staleness reasoning as navigate(): re-claim the foreground
+        // client before posting the reload.
+        let previous = currentClient();
+        try {
+            const foreground = await controller.foregroundClient();
+            if (foreground) previous = foreground;
+        } catch {
+            // Keep the session client.
+        }
         const beforeState = await controller.state();
         const known = new Set(beforeState.clients.map(item => item.client));
         await controller.navigationCommand(
@@ -588,7 +618,28 @@ export function createSession({
     async function cleanup() {
         if (!client || client.href === startUrl) return;
         try {
-            await navigate(startUrl);
+            // The session client can be stale (the page reloaded itself, or
+            // background tabs displaced it): reclaim the foreground tab and
+            // navigate IT back to the start URL.
+            let driver = null;
+            try {
+                driver = await controller.foregroundClient();
+            } catch {
+                driver = null;
+            }
+            if (driver === null) {
+                await navigate(startUrl);
+                return;
+            }
+            await controller.navigationCommand(
+                driver.client,
+                `location.href = ${JSON.stringify(startUrl)}; return "navigating";`,
+                { expectResult: false },
+            );
+            await controller.waitForClient(
+                candidate => controller.navigationMatches(candidate.href, startUrl),
+                startUrl,
+            );
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             console.error(`Could not return Safari to ${startUrl}: ${message}`);

@@ -22,7 +22,7 @@ STATE_DIR = PACKAGE_ROOT / ".ios-debug"
 DEBUG_TEMPLATE = PACKAGE_ROOT / "src" / "debug-template.user.js"
 PACKAGE_VERSION = json.loads((PACKAGE_ROOT / "package.json").read_text())["version"]
 DEBUG_PATH = f"/{DEBUGGER_SLUG}.user.js"
-MAX_BODY = 128 * 1024
+
 MAX_ITEMS = 500
 
 lock = threading.Lock()
@@ -108,7 +108,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def read_json(self):
         try:
-            length = min(int(self.headers.get("content-length", "0")), MAX_BODY)
+            length = int(self.headers.get("content-length", "0"))
             return json.loads(self.rfile.read(length))
         except (ValueError, UnicodeDecodeError, json.JSONDecodeError):
             return None
@@ -174,7 +174,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
             except ValueError:
                 after = 0
             with lock:
-                is_new = client not in clients
                 clients[client] = {
                     "client": client,
                     "href": query.get("href", [""])[0],
@@ -183,7 +182,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     "lastSeen": time.time(),
                 }
                 cursor = commands[-1]["id"] if commands else 0
-                pending = [] if is_new else [
+                # Deliver pending commands to new clients as well. Skipping
+                # them (the old behavior) still advanced the cursor, so the
+                # client permanently marked commands it never received as
+                # seen — commands posted between a page starting and its
+                # first poll were silently swallowed.
+                pending = [
                     item for item in commands
                     if item["id"] > after and item["target"] in {"*", client}
                 ]

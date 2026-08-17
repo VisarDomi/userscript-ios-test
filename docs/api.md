@@ -37,7 +37,9 @@ Useful low-level methods:
 - `runLocal(command, args)`;
 - `state()`;
 - `request(path, options)`;
-- `waitForResult(commandId)`.
+- `waitForResult(commandId)`;
+- `foregroundClient()` - the authoritative focus-based client selector;
+  prefer it after `session.navigate()`/`reload()` in multi-tab sessions.
 
 Prefer `createSession()` for phone operations.
 
@@ -78,7 +80,18 @@ poll must already be installed as document-start code.
 Options:
 
 - `reloadIfSame`: defaults to `true`;
-- `matches(client, expectedUrl)`: custom provider URL equivalence.
+- `matches(client, expectedUrl)`: custom provider URL equivalence. Providers
+  that canonicalize their URLs after load need a tolerant matcher here; the
+  default requires exact href equality (hostname, pathname, search, hash) and
+  otherwise waits the full client timeout and throws.
+
+**Adoption caveat:** the replacement client is picked by href matching among
+recently-seen clients. When several Safari tabs share the same URL (restored
+tabs, repeated visits, bfcache revivals), the adopted client can be a
+background tab and subsequent commands will time out. Keep Safari to one tab,
+or re-claim the focused tab with `controller.foregroundClient()` after
+navigating and command that client explicitly. See
+`docs/manual-control.md` -> "Commands time out right after navigation".
 
 ### `session.reload(url?, options?)`
 
