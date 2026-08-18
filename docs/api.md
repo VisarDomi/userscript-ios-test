@@ -86,12 +86,28 @@ Options:
   otherwise waits the full client timeout and throws.
 
 **Adoption caveat:** the replacement client is picked by href matching among
-recently-seen clients. When several Safari tabs share the same URL (restored
-tabs, repeated visits, bfcache revivals), the adopted client can be a
-background tab and subsequent commands will time out. Keep Safari to one tab,
-or re-claim the focused tab with `controller.foregroundClient()` after
-navigating and command that client explicitly. See
-`docs/manual-control.md` -> "Commands time out right after navigation".
+recently-seen clients. Two situations strand the adopted client:
+
+- Several Safari tabs share the same URL (restored tabs, repeated visits,
+  bfcache revivals) — the adopted client can be a background tab.
+- The target page reloads itself shortly after load (observed:
+  asurascans.com ~6s after navigation) — the adopted client is the dead
+  first page.
+
+`navigate()`/`reload()`/`cleanup()` now re-claim the foreground client
+internally when posting their navigation command, which covers the stale
+SESSION client. It does NOT cover a page that reloads after adoption: always
+re-claim the live foreground client immediately before the first command
+after navigating:
+
+```js
+await session.navigate(target);
+const fg = await controller.foregroundClient();
+await controller.command(fg.client, `return location.href;`);
+```
+
+See `docs/manual-control.md` -> "Commands time out right after navigation"
+and "The target page reloads itself after load".
 
 ### `session.reload(url?, options?)`
 

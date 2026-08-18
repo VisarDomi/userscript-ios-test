@@ -389,6 +389,49 @@ Diagnosis shortcut: while a run is stuck, curl the bridge state —
 clients' `href` and `lastSeen` fields against the tab you are watching.
 
 
+
+### The target page reloads itself after load
+
+Some provider pages reload themselves shortly after the initial load (observed:
+asurascans.com reloads ~6 seconds after navigation). The client that
+`session.navigate()` adopts belongs to the FIRST page; after the self-reload
+that client is dead and the next command times out — even with a single tab
+and no background-tab ambiguity. The same symptom as above, different cause.
+
+Remedy: always re-claim the live foreground client immediately before the
+first command after navigation (the pattern in "Commands time out right after
+navigation"). `foregroundClient()` selects whichever page is visible RIGHT
+NOW, so it is immune to the reload:
+
+```js
+await session.navigate(target);
+const fg = await controller.foregroundClient();   // live page, post-reload
+await controller.command(fg.client, `return location.href;`);
+```
+
+Diagnosis: the bridge state shows several clients with the SAME href and
+different ages; the adopted one is older than a fresh client at lastSeen 0s.
+If the page reloads on a fixed delay, insert a settle sleep after navigate
+before re-claiming.
+
+### Injection of a take-over app loses the command result
+
+Injecting a bundle whose first act is `window.stop()` +
+`document.open()`/`document.close()` (a take-over userscript) can destroy the
+page while the injection command's own result is still in flight — the
+command times out even though the injection actually succeeded. Symptoms:
+timeout on `session.inject()`, yet the app UI appears moments later.
+
+Remedies:
+
+- Prefer `session.inject(bundle, { before, after, label })` over a
+  hand-rolled `new Function(...)` command.
+- Treat the first timeout as "probably succeeded": re-claim the foreground
+  client and verify with a tiny command (the takeover DOM present) instead of
+  re-injecting blindly.
+- If you must retry, settle (`sleep`) between navigation and injection so
+  the page is not mid-boot when the takeover starts.
+
 ### Injection appears to succeed on the wrong page
 
 Navigation can briefly leave both the dying client and replacement client
@@ -397,6 +440,30 @@ actually acknowledged the injection; do not infer success from URL equality or
 from an unrelated new client. Consumer-specific custom injectors may be needed
 when the injected application calls `document.open()`/`document.close()` during
 takeover.
+
+
+## iOS platform quirks (collected on-device)
+
+These are facts about the iOS/WKWebView environment, each observed and
+worked around during real investigations. Assume they are true until
+re-verified on a newer OS:
+
+- `document.hasFocus()` is `false` even for the foreground tab.
+  `visibilityState === "visible"` is the discriminator.
+- `requestIdleCallback` does not exist in WKWebView. Scheduling must use
+  `MessageChannel`/macrotasks or event-driven triggers instead.
+- Scrolling emits an endless stream of `scroll` events (momentum,
+  rubber-band settling, layout shifts from lazy images). A "quiet window"
+  heuristic (no scroll for N ms) never fires while a catalog streams in.
+- `window.stop()` during a take-over aborts in-flight blob-worker script
+  loads. Spawn workers only AFTER the `document.open()`/`close()` nuke.
+- Fetching from a blob worker sends no page `Referer`; some
+  Cloudflare-fronted APIs answer worker requests without CORS headers.
+  Pass the page URL explicitly as the fetch `referrer`.
+- `window` event listeners registered BEFORE a `document.open()`
+  take-over can be lost with the old document. Register listeners lazily,
+  on first use (which is always after the take-over).
+
 
 ## Safety and cleanup
 
